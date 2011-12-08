@@ -1,0 +1,20 @@
+v 20110115 2
+C 40000 40000 0 0 0 title-B.sym
+C 52900 45100 1 0 0 rs485-1.sym
+{
+T 54550 46900 5 10 0 0 0 0 1
+device=MAX489
+T 54250 45250 5 10 1 1 0 0 1
+refdes=U?
+T 54550 46700 5 10 0 0 0 0 1
+footprint=SO14
+}
+C 43400 41800 1 0 0 ATmega164_TQFP.sym
+{
+T 47600 49300 5 10 1 1 0 6 1
+refdes=U?
+T 43800 49450 5 10 0 0 0 0 1
+device=ATmega163_TQFP
+T 43800 49650 5 10 0 0 0 0 1
+footprint=TQFP44
+}
