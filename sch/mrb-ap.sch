@@ -76,6 +76,8 @@ T 66900 49400 5 10 0 0 0 0 1
 symversion=0.1
 T 67050 48500 5 10 1 1 0 3 1
 value=20MHz
+T 66700 48700 5 10 0 1 0 0 1
+footprint=crystal-hc49
 }
 N 66700 48300 66700 50000 4
 N 67400 48300 67400 50000 4
@@ -517,6 +519,8 @@ T 51100 57500 5 10 1 1 0 0 1
 value=68uF
 T 51100 57300 5 10 1 1 0 0 1
 description=Electrolytic
+T 50800 58300 5 10 0 1 0 0 1
+footprint=cap-elec-Panasonic-FK--D6.30-H5.80-mm
 }
 C 43700 48800 1 270 0 capacitor-1.sym
 {
