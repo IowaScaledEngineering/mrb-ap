@@ -15,8 +15,8 @@ Element[0x00000000 "Standard SMT resistor, capacitor etc" "" "0805" 0 0 -3150 -3
 	    Pad[3543 -393
 		3543 393
 		5118 2000 5718 "2" "2" "square"]
-	ElementLine[-393 -2755 393 -2755 800]
-	    ElementLine[-393 2755 393 2755 800]
+	ElementLine[-393 -2755 393 -2755 1000]
+	    ElementLine[-393 2755 393 2755 1000]
 #
 # This draws a 1 mil placement courtyard outline in silk.  It should probably
 # not be included since you wont want to try and fab a 1 mil silk line.  Then

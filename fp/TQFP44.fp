@@ -50,14 +50,14 @@ Element[0x00000000 "Square Quad-side flat pack" "" "TQFP44_10" 0 0 -2000 -6000 0
 	Pad[-15748 -26898  -15748  -22472  1574  3000 1874 "44" "44"  0x00000900]
 	# exposed paddle (if this is an exposed paddle part) 
 	# top
-	ElementLine[-16385 -19285 19285 -19285 800]
+	ElementLine[-16385 -19285 19285 -19285 1000]
 	# right
-	ElementLine[19285 -19285 19285 19285 800]
+	ElementLine[19285 -19285 19285 19285 1000]
 	# bottom
-	ElementLine[19285 19285 -19285 19285 800]
+	ElementLine[19285 19285 -19285 19285 1000]
 	# left
-	ElementLine[-19285 19285 -19285 -16385 800]
+	ElementLine[-19285 19285 -19285 -16385 1000]
 	# angled corner
-	ElementLine[-19285 -16385 -16385 -19285 800]
-	ElementArc[-16385 -16385 1000 1000 0 360 800]
+	ElementLine[-19285 -16385 -16385 -19285 1000]
+	ElementArc[-16385 -16385 1000 1000 0 360 1000]
 )
