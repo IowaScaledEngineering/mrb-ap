@@ -1,0 +1,6 @@
+#!/bin/bash
+
+pcb -x ps --psfile mrb-ap-pcb.ps mrb-ap.pcb
+ps2pdf mrb-ap-pcb.ps
+rm mrb-ap-pcb.ps
+acroread mrb-ap-pcb.pdf
