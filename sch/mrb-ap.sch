@@ -311,7 +311,7 @@ refdes=Q1
 T 49000 48100 5 10 1 1 0 0 1
 value=BSS138
 T 49000 49200 5 10 0 0 0 0 1
-footprint=SOT23
+footprint=SOT23_MOS
 }
 C 48600 49700 1 0 0 resistor-1.sym
 {
@@ -932,7 +932,7 @@ refdes=Q2
 T 49700 47400 5 10 1 1 0 0 1
 value=BSS138
 T 49700 48500 5 10 0 0 0 0 1
-footprint=SOT23
+footprint=SOT23_MOS
 }
 C 50400 47800 1 270 0 mosfet-with-diode-1.sym
 {
@@ -943,7 +943,7 @@ refdes=Q3
 T 50400 46700 5 10 1 1 0 0 1
 value=BSS138
 T 50400 47800 5 10 0 0 0 0 1
-footprint=SOT23
+footprint=SOT23_MOS
 }
 C 51100 47100 1 270 0 mosfet-with-diode-1.sym
 {
@@ -954,7 +954,7 @@ refdes=Q4
 T 51100 46000 5 10 1 1 0 0 1
 value=BSS138
 T 51100 47100 5 10 0 0 0 0 1
-footprint=SOT23
+footprint=SOT23_MOS
 }
 C 47300 55500 1 90 0 header2-1.sym
 {
