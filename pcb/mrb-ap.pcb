@@ -1,5 +1,5 @@
 # release: pcb 20100929
-# date:    Mon Jan 30 20:35:51 2012
+# date:    Tue Jan 31 16:39:53 2012
 # user:    railfan (Michael Petersen,,,)
 # host:    sylvanite
 
@@ -2443,7 +2443,7 @@ Layer(4 "silk")
 	Line[1000 199000 349000 199000 1000 2000 "clearline"]
 	Line[349000 199000 349000 1000 1000 2000 "clearline"]
 	Text[42414 9000 0 122 "MRB-AP / MRB-CI2" "clearline"]
-	Text[54500 19000 0 122 "(C) 2012" "clearline"]
+	Text[42000 19500 0 122 "(C) 2012" "clearline"]
 	Text[5000 156500 0 122 "PKT" "clearline"]
 	Text[300500 4000 0 122 "TX" "clearline"]
 	Text[287500 4000 0 122 "RX" "clearline"]
@@ -2455,6 +2455,7 @@ Layer(4 "silk")
 	Text[11000 58000 3 122 "GND" "clearline"]
 	Text[11000 82500 3 122 "A" "clearline"]
 	Text[11000 102000 3 122 "B" "clearline"]
+	Text[80000 19500 0 122 "v1.0" "clearline"]
 )
 NetList()
 (
