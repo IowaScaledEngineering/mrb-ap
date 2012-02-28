@@ -3,7 +3,8 @@ F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x99
 FUSE_E  = 0xFC
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B 1
+#AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B 1
+AVRDUDE = avrdude -c usbtiny -p $(DEVICE)
 
 CFLAGS  = -I. -I../../mrbus/src -I../../mrbee/src -DDEBUG_LEVEL=0 -DMRBUS_DISABLE_LOOPBACK
 OBJECTS = main.o ../../mrbus/src/mrbus-avr.o ../../mrbus/src/mrbus-crc.o ../../mrbee/src/mrbee.o ../../mrbee/src/xbee.o
@@ -18,7 +19,7 @@ help:
 	@echo "make program ... flash fuses and firmware"
 	@echo "make fuse ...... flash the fuses"
 	@echo "make read ...... read the fuses"
-	@echo "make flash ..... flash the firmware (use this on metaboard)"
+	@echo "make flash ..... flash the firmware"
 	@echo "make clean ..... delete objects and hex file"
 
 hex: main.hex
