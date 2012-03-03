@@ -1,30 +1,61 @@
+#*************************************************************************
+#Title:    MRB-AP Makefile
+#Authors:  Michael Petersen <railfan@drgw.net>
+#          Nathan Holmes <maverick@drgw.net>
+#File:     MRB-AP Makefile
+#License:  GNU General Public License v3
+#
+#LICENSE:
+#    Copyright (C) 2012 Nathan Holmes and Michael Petersen
+#
+#    Derived from example WinAVR project Makefile
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 3 of the License, or
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#    
+#    You should have received a copy of the GNU General Public License along 
+#    with this program. If not, see http://www.gnu.org/licenses/
+#    
+#*************************************************************************
+
 DEVICE  = atmega1284p
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x99
 FUSE_E  = 0xFC
-#AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B 1
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE)
+AVRDUDE = avrdude -c usbtiny -p $(DEVICE) 
 
-CFLAGS  = -I. -I../../mrbus/src -I../../mrbee/src -DDEBUG_LEVEL=0 -DMRBUS_DISABLE_LOOPBACK
-OBJECTS = main.o ../../mrbus/src/mrbus-avr.o ../../mrbus/src/mrbus-crc.o ../../mrbee/src/mrbee.o ../../mrbee/src/xbee.o
+BASE_NAME = mrb-ap
+INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
+SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
+OBJS = ${SRCS:.c=.o}
+INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
+CFLAGS  = $(INCLUDES) -Wall -Os
 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
+COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
 # -E -dM options preprocess only and output results of #define
 #COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM
 
 help:
-	@echo "make hex ....... build main.hex"
-	@echo "make program ... flash fuses and firmware"
-	@echo "make fuse ...... flash the fuses"
-	@echo "make read ...... read the fuses"
+	@echo "make hex ....... build $(BASE_NAME).hex"
 	@echo "make flash ..... flash the firmware"
+	@echo "make fuse ...... flash the fuses"
+	@echo "make program ... flash fuses and firmware"
+	@echo "make read ...... read the fuses"
 	@echo "make clean ..... delete objects and hex file"
+	@echo "make release.... produce release tarball"
 
-hex: main.hex
+hex: $(BASE_NAME).hex
 
-program: flash fuse
+program: fuse flash
 
 # rule for programming fuse bits:
 fuse:
@@ -36,15 +67,15 @@ read:
 	$(AVRDUDE) -v
 
 # rule for uploading firmware:
-flash: main.hex
-	$(AVRDUDE) -U flash:w:main.hex:i
+flash: $(BASE_NAME).hex
+	$(AVRDUDE) -U flash:w:$(BASE_NAME).hex:i
 
 # rule for deleting dependent files (those which can be built by Make):
 clean:
-	rm -f main.hex main.lst main.obj main.cof main.list main.map main.eep.hex main.elf main.s *.o ../../mrbus/src/*.o ../../mrbee/src/*.o
+	rm -f $(BASE_NAME).hex $(BASE_NAME).lst $(BASE_NAME).obj $(BASE_NAME).cof $(BASE_NAME).list $(BASE_NAME).map $(BASE_NAME).eep.hex $(BASE_NAME).elf $(BASE_NAME).s $(OBJS) *.o *.tgz *~
 
 # Generic rule for compiling C files:
-.c.o:
+.c.o: $(INCS)
 	$(COMPILE) -c $< -o $@
 
 # Generic rule for assembling Assembler source files:
@@ -61,18 +92,61 @@ clean:
 
 # file targets:
 
-main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS)
+$(BASE_NAME).elf: $(OBJS)
+	$(COMPILE) -o $(BASE_NAME).elf $(OBJS)
 
-main.hex: main.elf
-	rm -f main.hex main.eep.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
-	avr-size main.hex
+$(BASE_NAME).hex: $(BASE_NAME).elf
+	rm -f $(BASE_NAME).hex $(BASE_NAME).eep.hex
+	avr-objcopy -j .text -j .data -O ihex $(BASE_NAME).elf $(BASE_NAME).hex
+	avr-size $(BASE_NAME).hex
 
 # debugging targets:
 
-disasm:	main.elf
-	avr-objdump -d main.elf
+disasm:	$(BASE_NAME).elf
+	avr-objdump -d $(BASE_NAME).elf
 
-cpp:
-	$(COMPILE) -E main.c
+PWD := $(shell pwd)
+
+release: hex
+	@echo -n "Creating temporary build directories..."
+	@$(eval BTMPDIR := $(shell mktemp -d))
+	@$(eval TMPDIR := $(BTMPDIR)/$(BASE_NAME))
+	@$(eval BOILERPLATE_FILES := $(shell find ../../docs/release-boilerplate -type f -name *.txt -print))
+	@$(eval RELEASE_TIME := $(shell date +"%d%b%Y-%H%Mh"))
+	@mkdir -p $(TMPDIR)/mrbus/src
+	@mkdir -p $(TMPDIR)/$(BASE_NAME)/src
+	@echo "  [done]"
+
+	@echo -n "Copying boilerplate files..."
+	@cp $(BOILERPLATE_FILES) $(TMPDIR)
+	@echo "  [done]"
+
+	@echo -n "Copying Makefile..."
+	@cp Makefile $(TMPDIR)/$(BASE_NAME)/src/Makefile
+
+	@echo -n "Copying object..."
+	@cp $(BASE_NAME).hex $(TMPDIR)/$(BASE_NAME)/src/$(BASE_NAME).hex
+	@echo "  [done]"
+
+	@echo -n "Copying source files..."
+	@tar cPf - $(INCS) | tar xPf - -C $(TMPDIR)/$(BASE_NAME)/src/
+	@echo "  [done]"
+
+	@echo -n "Copying include files..."
+	@tar cPf - $(SRCS) | tar xPf - -C $(TMPDIR)/$(BASE_NAME)/src/
+	@echo "  [done]"
+
+	@echo -n "Writing file SVN statuses..."
+	@echo "### Archive built at $(RELEASE_TIME)" > $(TMPDIR)/$(BASE_NAME)/src/FILE_SVN_VERSIONS
+	@svn status -v $(BOILERPLATE_FILES) >> $(TMPDIR)/$(BASE_NAME)/src/FILE_SVN_VERSIONS
+	@svn status -v Makefile >> $(TMPDIR)/$(BASE_NAME)/src/FILE_SVN_VERSIONS
+	@svn status -v $(INCS) >> $(TMPDIR)/$(BASE_NAME)/src/FILE_SVN_VERSIONS
+	@svn status -v $(SRCS) >> $(TMPDIR)/$(BASE_NAME)/src/FILE_SVN_VERSIONS
+	@echo "  [done]"
+	
+
+	@echo -n "Creating tarball..."
+	@tar zcf $(BASE_NAME)-$(RELEASE_TIME).tgz -C $(BTMPDIR) $(BASE_NAME)
+	@echo "  [done]"
+
+	@echo "Release in $(BASE_NAME)-$(RELEASE_TIME).tgz"
