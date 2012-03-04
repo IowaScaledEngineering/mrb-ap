@@ -25,7 +25,8 @@
 #    
 #*************************************************************************
 
-DEVICE  = atmega1284p
+#DEVICE  = atmega1284p
+DEVICE  = atmega164p
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x99
@@ -37,7 +38,7 @@ INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee
 SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
-CFLAGS  = $(INCLUDES) -Wall -Os
+CFLAGS  = $(INCLUDES) -Wall -Os -DMRBUS_DISABLE_LOOPBACK
 
 COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
