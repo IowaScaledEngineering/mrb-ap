@@ -1055,9 +1055,9 @@ refdes=C16
 T 55300 42800 5 10 0 0 270 2 1
 symversion=0.1
 T 55900 42200 5 10 1 1 0 6 1
-value=10uF
+value=4.7uF
 T 56200 43000 5 10 0 0 0 6 1
 footprint=0805
 T 55900 42000 5 10 1 1 0 6 1
-description=25V
+description=16V
 }
