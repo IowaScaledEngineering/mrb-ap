@@ -25,8 +25,8 @@
 #    
 #*************************************************************************
 
-#DEVICE  = atmega1284p
-DEVICE  = atmega164p
+DEVICE  = atmega1284p
+#DEVICE  = atmega164p
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x99
