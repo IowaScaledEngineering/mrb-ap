@@ -48,8 +48,7 @@ int main(void)
 
 	init();
 	mrbusInit();
-//	mrbeeInit(129);  // ubrr = 129 ==> 9600 baud @ 20MHz
-	mrbeeInit(10);  // ubrr = 10 ==> 115200 baud @ 20MHz
+	mrbeeInit();
 
 	sei();
 
