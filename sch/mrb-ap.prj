@@ -1,4 +1,4 @@
 schematics mrb-ap.sch
 output-name ../pcb/mrb-ap
 skip-m4
-elements-dir ../fp
+elements-dir ../../../footprints
