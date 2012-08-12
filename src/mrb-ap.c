@@ -38,6 +38,11 @@ extern uint8_t mrbee_rx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbee_tx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbee_state;
 
+extern uint16_t count_mrbus_rx;
+extern uint16_t count_mrbus_tx;
+extern uint16_t count_xbee_rx;
+extern uint16_t count_xbee_tx;
+extern uint16_t count_xbee_crc_error;
 
 int main(void)
 {
@@ -67,7 +72,15 @@ int main(void)
 			    {
 			        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
 			    }
-
+			    
+			    // Shed
+			    count_mrbus_rx--;
+			    mrbee_tx_buffer[8] = (count_mrbus_rx >> 8);
+			    mrbee_tx_buffer[9] = count_mrbus_rx & 0xFF;
+			    count_mrbus_rx++;
+			    mrbee_tx_buffer[10] = (count_xbee_tx >> 8);
+			    mrbee_tx_buffer[11] = count_xbee_tx & 0xFF;
+			    
 			    mrbeePacketTransmit();
 			    mrbus_state &= ~MRBUS_RX_PKT_READY;
             }
@@ -84,6 +97,16 @@ int main(void)
 			    {
 			        mrbus_tx_buffer[i] = mrbee_rx_buffer[i];
 			    }
+
+			    // Garage
+			    count_xbee_rx--;
+			    mrbus_tx_buffer[14] = (count_xbee_rx >> 8);
+			    mrbus_tx_buffer[15] = count_xbee_rx & 0xFF;
+			    count_xbee_rx++;
+			    mrbus_tx_buffer[16] = (count_mrbus_tx >> 8);
+			    mrbus_tx_buffer[17] = count_mrbus_tx & 0xFF;
+			    mrbus_tx_buffer[18] = (count_xbee_crc_error >> 8);
+			    mrbus_tx_buffer[19] = count_xbee_crc_error & 0xFF;
 
                 mrbus_state |= MRBUS_TX_PKT_READY;
                 mrbee_state &= ~MRBEE_RX_PKT_READY;
