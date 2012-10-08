@@ -29,7 +29,7 @@ DEVICE  = atmega1284p
 #DEVICE  = atmega164p
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
-FUSE_H  = 0x99
+FUSE_H  = 0x91
 FUSE_E  = 0xFC
 AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
 
