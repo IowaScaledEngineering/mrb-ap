@@ -40,10 +40,10 @@ OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
 CFLAGS  = $(INCLUDES) -Wall -Os -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16
 
-#COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
+COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
 # -E -dM options preprocess only and output results of #define
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM
+#COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM
 
 help:
 	@echo "make hex ....... build $(BASE_NAME).hex"
