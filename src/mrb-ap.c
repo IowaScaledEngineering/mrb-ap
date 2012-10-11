@@ -38,13 +38,17 @@ extern uint8_t mrbee_rx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbee_tx_buffer[MRBUS_BUFFER_SIZE];
 extern uint8_t mrbee_state;
 
-uint8_t dev_addr = 0;
-uint16_t pkt_period = 10;
-
-uint8_t powerOnReset = 0;
-
 extern uint8_t mrbee_rssi;
 uint8_t rssi_table[256];
+
+uint32_t mrbusPktCount = 0;
+uint32_t mrbeePktCount = 0;
+
+
+#ifdef PKT_HANDLER
+uint8_t powerOnReset = 0;
+uint8_t dev_addr = 0;
+uint16_t pkt_period = 10;
 
 void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *state, uint8_t tx_mask)
 {
@@ -133,6 +137,70 @@ void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *s
 
 }
 
+// ******** Start 100 Hz Timer, 0.16% error version (Timer 0)
+// If you can live with a slightly less accurate timer, this one only uses Timer 0, leaving Timer 1 open
+// for more advanced things that actually need a 16 bit timer/counter
+
+// Initialize a 100Hz timer for use in triggering events.
+// If you need the timer resources back, you can remove this, but I find it
+// rather handy in triggering things like periodic status transmissions.
+// If you do remove it, be sure to yank the interrupt handler and ticks/secs as well
+// and the call to this function in the main function
+
+volatile uint8_t ticks;
+volatile uint16_t decisecs;
+
+void initialize100HzTimer(void)
+{
+	// Set up timer 1 for 100Hz interrupts
+	TCNT0 = 0;
+	OCR0A = 0xC2;
+	ticks = 0;
+	decisecs = 0;
+	TCCR0A = _BV(WGM01);
+	TCCR0B = _BV(CS02) | _BV(CS00);
+	TIMSK0 |= _BV(OCIE0A);
+}
+
+ISR(TIMER0_COMPA_vect)
+{
+	if (++ticks >= 10)
+	{
+		ticks = 0;
+		decisecs++;
+	}
+}
+
+// End of 100Hz timer
+
+volatile uint16_t busVoltageAccum=0;
+volatile uint16_t busVoltage=0;
+volatile uint8_t busVoltageCount=0;
+
+uint8_t decInHex(uint8_t val)
+{
+    uint8_t tens=0, ones=0;
+    tens = (val / 10) & 0x0F;
+	ones = (val - tens * 10) & 0x0F;
+	return ((tens << 4) & 0xF0) + ones;
+}
+
+ISR(ADC_vect)
+{
+	busVoltageAccum += ADC;
+	if (++busVoltageCount >= 64)
+	{
+		busVoltageAccum = busVoltageAccum / 64;
+        //At this point, we're at (Vbus/3) / 5 * 1024
+        //So multiply by 150, divide by 1024, or multiply by 75 and divide by 512
+        busVoltage = ((uint32_t)busVoltageAccum * 75) / 512;
+		busVoltageAccum = 0;
+		busVoltageCount = 0;
+	}
+}
+#endif
+
+
 
 void pktRelay(void)
 {
@@ -140,6 +208,11 @@ void pktRelay(void)
 	uint8_t i;
 
     // MRBus --> MRBee
+#ifndef PKT_HANDLER
+	if( mrbus_state & MRBUS_RX_PKT_READY )
+	{
+#endif
+#ifdef PKT_HANDLER
 	if( (mrbus_state & MRBUS_RX_PKT_READY) && (mrbus_rx_buffer[MRBUS_PKT_SRC] != dev_addr) )
 	{
 		// MRBUS packet is available and not one we originated
@@ -158,12 +231,16 @@ void pktRelay(void)
             }
     	}
 		else if( !(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)) )
+#endif
+#ifndef PKT_HANDLER
+		if( !(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)) )
+#endif
 		{
 			if (mrbus_rx_buffer[MRBUS_PKT_LEN] > MRBEE_BUFFER_SIZE) mrbus_rx_buffer[MRBUS_PKT_LEN] = MRBEE_BUFFER_SIZE;
 
 		    for(i = 0; i < mrbus_rx_buffer[MRBUS_PKT_LEN]; i++)
 		    {
-		        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
+;		        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
 		    }
 
             mrbee_state |= MRBEE_TX_PKT_READY;
@@ -179,6 +256,11 @@ void pktRelay(void)
 	}
 	
 	// MRBee --> MRBus
+#ifndef PKT_HANDLER
+	if( mrbee_state & MRBEE_RX_PKT_READY )
+	{
+#endif
+#ifdef PKT_HANDLER
 	if( (mrbee_state & MRBEE_RX_PKT_READY) && (mrbee_rx_buffer[MRBEE_PKT_SRC] != dev_addr) )
 	{
 	    // MRBEE packet is available and not one we originated
@@ -197,6 +279,10 @@ void pktRelay(void)
             }
     	}
 	    else if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) )
+#endif
+#ifndef PKT_HANDLER
+	    if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) )
+#endif
         {
 			if (mrbee_rx_buffer[MRBEE_PKT_LEN] > MRBUS_BUFFER_SIZE) mrbee_rx_buffer[MRBEE_PKT_LEN] = MRBUS_BUFFER_SIZE;
 
@@ -235,12 +321,8 @@ void init(void)
 	wdt_reset();
 	wdt_disable();
 
-	// prescaler is 8, timer counts 1/2 microseconds
-//	TCCR0B = _BV(CS02) | _BV(CS00);
-
-	/* prescaler is 1024 for 16bit timer */
-//	TCCR1A = 0x00;
-//	TCCR1B = 0x00 | _BV(CS12) | _BV(CS10);
+	mrbusPktCount = 0;
+	mrbeePktCount = 0;
 
     for(i=0; i<256; i++)
     {
@@ -250,11 +332,24 @@ void init(void)
 	// Disable comparator to save power
 	ACSR = _BV(ACD);
 
+#ifdef PKT_HANDLER
 	// Initialize MRBus address from EEPROM address 1
 	dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
 
 	// Initialize MRBus packet update interval from EEPROM
 	pkt_period = ((eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H) << 8) & 0xFF00) | (eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) & 0x00FF);
+
+	// Setup ADC
+	ADMUX  = 0x40;  // AVCC reference; ADC0 input
+	ADCSRA = _BV(ADATE) | _BV(ADIF) | _BV(ADPS2) | _BV(ADPS1); // 64 prescaler
+	ADCSRB = 0x00;
+	DIDR0  = _BV(ADC0D);
+
+    busVoltage = 0;
+    busVoltageAccum = 0;
+    busVoltageCount = 0;
+    ADCSRA |= _BV(ADEN) | _BV(ADSC) | _BV(ADIE) | _BV(ADIF);
+#endif
 }
 
 
@@ -262,24 +357,81 @@ void init(void)
 
 int main(void)
 {
-	DDRA |= _BV(PA0);
-	PORTA &= ~_BV(PA0);
-
 	init();
+
+#ifdef PKT_HANDLER
+	initialize100HzTimer();
+#endif
+	
 	mrbusInit();
 	mrbeeInit();
 
+#ifdef PKT_HANDLER
 	powerOnReset = 1;
 	mrbus_rx_buffer[MRBUS_PKT_SRC] = 0xFF;  // Fake the handler into sending a broadcast
     pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, 0, &mrbus_state, MRBUS_TX_PKT_READY );
 	mrbee_rx_buffer[MRBEE_PKT_SRC] = 0xFF;  // Fake the handler into sending a broadcast
     pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, 0, &mrbee_state, MRBEE_TX_PKT_READY );
 	powerOnReset = 0;
+#endif
 
 	sei();
 	
 	while (1)
 	{
+#ifdef PKT_HANDLER
+        if (decisecs >= pkt_period)
+        {
+			if(!(mrbus_state & MRBUS_TX_PKT_READY))
+			{
+    			mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+    			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
+    			mrbus_tx_buffer[MRBUS_PKT_LEN] = 15;
+    			mrbus_tx_buffer[5] = 'S';
+
+    			mrbus_tx_buffer[6]  = (uint8_t)((mrbusPktCount >> 24) & 0xFF);
+    			mrbus_tx_buffer[7]  = (uint8_t)((mrbusPktCount >> 16) & 0xFF);
+    			mrbus_tx_buffer[8]  = (uint8_t)((mrbusPktCount >>  8) & 0xFF);
+    			mrbus_tx_buffer[9]  = (uint8_t)(mrbusPktCount & 0xFF);
+
+    			mrbus_tx_buffer[10] = (uint8_t)((mrbeePktCount >> 24) & 0xFF);
+    			mrbus_tx_buffer[11] = (uint8_t)((mrbeePktCount >> 16) & 0xFF);
+    			mrbus_tx_buffer[12] = (uint8_t)((mrbeePktCount >>  8) & 0xFF);
+    			mrbus_tx_buffer[13] = (uint8_t)(mrbeePktCount & 0xFF);
+    			
+    			mrbus_tx_buffer[14] = (uint8_t)busVoltage;
+
+//    			mrbus_tx_buffer[7] = decInHex(busVoltage/10);
+//    			mrbus_tx_buffer[8] = decInHex(busVoltage-(10*(busVoltage/10)));
+//    			mrbus_tx_buffer[MRBUS_PKT_LEN] = 9;
+    			mrbus_state |= MRBUS_TX_PKT_READY;
+            }
+            
+			if(!(mrbee_state & MRBEE_TX_PKT_READY))
+			{
+    			mrbee_tx_buffer[MRBEE_PKT_SRC] = dev_addr;
+    			mrbee_tx_buffer[MRBEE_PKT_DEST] = 0xFF;
+    			mrbee_tx_buffer[MRBEE_PKT_LEN] = 15;
+    			mrbee_tx_buffer[5] = 'S';
+
+    			mrbee_tx_buffer[6]  = (uint8_t)((mrbusPktCount >> 24) & 0xFF);
+    			mrbee_tx_buffer[7]  = (uint8_t)((mrbusPktCount >> 16) & 0xFF);
+    			mrbee_tx_buffer[8]  = (uint8_t)((mrbusPktCount >>  8) & 0xFF);
+    			mrbee_tx_buffer[9]  = (uint8_t)(mrbusPktCount & 0xFF);
+
+    			mrbee_tx_buffer[10] = (uint8_t)((mrbeePktCount >> 24) & 0xFF);
+    			mrbee_tx_buffer[11] = (uint8_t)((mrbeePktCount >> 16) & 0xFF);
+    			mrbee_tx_buffer[12] = (uint8_t)((mrbeePktCount >>  8) & 0xFF);
+    			mrbee_tx_buffer[13] = (uint8_t)(mrbeePktCount & 0xFF);
+    			
+    			mrbee_tx_buffer[14] = (uint8_t)busVoltage;
+
+    			mrbee_state |= MRBEE_TX_PKT_READY;
+			}
+			decisecs = 0;
+        }
+#endif
+	
 		mrbeePoll();
 
 		if( (mrbus_state & MRBUS_RX_PKT_READY) || (mrbee_state & MRBEE_RX_PKT_READY) )
@@ -289,6 +441,7 @@ int main(void)
 		if(mrbee_state & MRBEE_TX_PKT_READY)
 		{
 		    mrbeePacketTransmit();
+		    mrbeePktCount++;
             mrbee_state &= ~(MRBEE_TX_PKT_READY);
 		}
 		
@@ -306,6 +459,7 @@ int main(void)
 
 			if (0 == mrbusPacketTransmit())
 			{
+			    mrbusPktCount++;
 				mrbus_state &= ~(MRBUS_TX_PKT_READY);
 				break;
 			}
@@ -328,20 +482,6 @@ int main(void)
         		    pktRelay();
 			}
 		}
-
-/*
-		if(mrbus_state & MRBUS_TX_PKT_READY)
-		{
-			if (mrbusPacketTransmit())
-			{
-				//  Packet transmit failed; Wait prescribed 10ms before trying again
-				for (count = 0; count < 10; count++)
-				{
-					_delay_ms(1);
-				}
-			}
-		}
-*/
 	}
 }
 
