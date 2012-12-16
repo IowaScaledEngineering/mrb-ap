@@ -34,13 +34,14 @@ FUSE_E  = 0xFC
 AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
 
 BASE_NAME = mrb-ap
+DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=0 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
 INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
 SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 OBJS = ${SRCS:.c=.o}
 INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
-CFLAGS  = $(INCLUDES) -Wall -Os -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16
+CFLAGS  = $(INCLUDES) -Wall -Os -ffunction-sections -Wl,-gc-sections
 
-COMPILE = avr-gcc -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
+COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
 # -E -dM options preprocess only and output results of #define
 #COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE) -E -dM

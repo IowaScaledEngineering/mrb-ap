@@ -50,6 +50,11 @@ uint8_t powerOnReset = 0;
 uint8_t dev_addr = 0;
 uint16_t pkt_period = 10;
 
+//  Need busy status:
+//  Problem case is when MRBee incoming, gets relayed to MRBus. While relaying, 
+//  MRBus packet comes in. Packet is handled and response stomps on relayed 
+//  MRBee packet. And vice versa..
+
 void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *state, uint8_t tx_mask)
 {
 	//*************** PACKET HANDLER - PROCESS HERE ***************
@@ -57,55 +62,67 @@ void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *s
 	if ('A' == rx_buffer[MRBUS_PKT_TYPE])
 	{
 		// PING packet
-		tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-		tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-		tx_buffer[MRBUS_PKT_LEN] = 6;
-		tx_buffer[MRBUS_PKT_TYPE] = 'a';
-		*state |= tx_mask;
+        if(!busy)
+        {
+            tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+            tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+            tx_buffer[MRBUS_PKT_LEN] = 6;
+            tx_buffer[MRBUS_PKT_TYPE] = 'a';
+            *state |= tx_mask;
+		}
 	} 
 	else if ('W' == rx_buffer[MRBUS_PKT_TYPE]) 
 	{
 		// EEPROM WRITE Packet
-		tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-		tx_buffer[MRBUS_PKT_LEN] = 8;			
-		tx_buffer[MRBUS_PKT_TYPE] = 'w';
 		eeprom_write_byte((uint8_t*)(uint16_t)rx_buffer[6], rx_buffer[7]);
-		tx_buffer[6] = rx_buffer[6];
-		tx_buffer[7] = rx_buffer[7];
 		if (MRBUS_EE_DEVICE_ADDR == rx_buffer[6])
 			dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
 		if ( (MRBUS_EE_DEVICE_UPDATE_L == rx_buffer[6]) || (MRBUS_EE_DEVICE_UPDATE_H == rx_buffer[6]) )
 		    pkt_period = ((eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H) << 8) & 0xFF00) | (eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) & 0x00FF);
-		tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-		*state |= tx_mask;
+        if(!busy)
+        {
+            tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+            tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+            tx_buffer[MRBUS_PKT_LEN] = 8;			
+            tx_buffer[MRBUS_PKT_TYPE] = 'w';
+            tx_buffer[6] = rx_buffer[6];
+            tx_buffer[7] = rx_buffer[7];
+            *state |= tx_mask;
+        }
 	}
 	else if ('R' == rx_buffer[MRBUS_PKT_TYPE]) 
 	{
 		// EEPROM READ Packet
-		tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-		tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-		tx_buffer[MRBUS_PKT_LEN] = 8;			
-		tx_buffer[MRBUS_PKT_TYPE] = 'r';
-		tx_buffer[6] = rx_buffer[6];
-		tx_buffer[7] = eeprom_read_byte((uint8_t*)(uint16_t)rx_buffer[6]);			
-		*state |= tx_mask;
+		if(!busy)
+		{
+            tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+            tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+            tx_buffer[MRBUS_PKT_LEN] = 8;			
+            tx_buffer[MRBUS_PKT_TYPE] = 'r';
+            tx_buffer[6] = rx_buffer[6];
+            tx_buffer[7] = eeprom_read_byte((uint8_t*)(uint16_t)rx_buffer[6]);			
+            *state |= tx_mask;
+        }
 	}
 	else if ( ('V' == rx_buffer[MRBUS_PKT_TYPE]) || (powerOnReset) )
 	{
 		// Version
-		tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-		tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-		tx_buffer[MRBUS_PKT_LEN] = 14;
-		tx_buffer[MRBUS_PKT_TYPE] = 'v';
-		tx_buffer[6]  = MRBUS_VERSION_WIRELESS;
-		tx_buffer[7]  = 0; // Software Revision
-		tx_buffer[8]  = 0; // Software Revision
-		tx_buffer[9]  = 0; // Software Revision
-		tx_buffer[10]  = 0; // Hardware Major Revision
-		tx_buffer[11]  = 0; // Hardware Minor Revision
-		tx_buffer[12] = 'A';
-		tx_buffer[13] = 'P';
-		*state |= tx_mask;
+		if(!busy)
+		{
+            tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+            tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+            tx_buffer[MRBUS_PKT_LEN] = 14;
+            tx_buffer[MRBUS_PKT_TYPE] = 'v';
+            tx_buffer[6]  = MRBUS_VERSION_WIRELESS;
+            tx_buffer[7]  = SWREV; // Software Revision
+            tx_buffer[8]  = SWREV; // Software Revision
+            tx_buffer[9]  = SWREV; // Software Revision
+            tx_buffer[10]  = HWREV_MAJOR; // Hardware Major Revision
+            tx_buffer[11]  = HWREV_MINOR; // Hardware Minor Revision
+            tx_buffer[12] = 'A';
+            tx_buffer[13] = 'P';
+            *state |= tx_mask;
+		}
 	}
 	else if ('X' == rx_buffer[MRBUS_PKT_TYPE]) 
 	{
@@ -122,14 +139,52 @@ void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *s
 		if( ('R' == rx_buffer[6]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
 		{
 		    // RSSI Request
-    		tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-    		tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-    		tx_buffer[MRBUS_PKT_LEN] = 9;
-    		tx_buffer[MRBUS_PKT_TYPE] = 'c';
-    		tx_buffer[6] = 'r';
-    		tx_buffer[7] = rx_buffer[7];
-    		tx_buffer[8] = rssi_table[rx_buffer[7]];
-    		*state |= tx_mask;
+            if(!busy)
+            {
+                tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+                tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+                tx_buffer[MRBUS_PKT_LEN] = 9;
+                tx_buffer[MRBUS_PKT_TYPE] = 'c';
+                tx_buffer[6] = 'r';
+                tx_buffer[7] = rx_buffer[7];
+                tx_buffer[8] = rssi_table[rx_buffer[7]];
+                *state |= tx_mask;
+            }
+		}
+		else if( ('X' == rx_buffer[6]) && ('R' == rx_buffer[7]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
+		{
+		    // RSSI Reset
+            uint16_t i;
+            for(i=0; i<256; i++)
+            {
+                rssi_table[i] = 0xFF;  // Set all values to max -dBm
+            }
+            if(!busy)
+            {
+                tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+                tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+                tx_buffer[MRBUS_PKT_LEN] = 8;
+                tx_buffer[MRBUS_PKT_TYPE] = 'c';
+                tx_buffer[6] = 'x';
+                tx_buffer[7] = 'r';
+                *state |= tx_mask;
+            }
+		}
+		else if( ('X' == rx_buffer[6]) && ('P' == rx_buffer[7]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
+		{
+		    // Packet Counter Reset
+            mrbusPktCount = 0;
+            mrbeePktCount = 0;
+            if(!busy)
+            {
+                tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+                tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+                tx_buffer[MRBUS_PKT_LEN] = 8;
+                tx_buffer[MRBUS_PKT_TYPE] = 'c';
+                tx_buffer[6] = 'x';
+                tx_buffer[7] = 'p';
+                *state |= tx_mask;
+            }
 		}
 	}
 
@@ -240,7 +295,7 @@ void pktRelay(void)
 
 		    for(i = 0; i < mrbus_rx_buffer[MRBUS_PKT_LEN]; i++)
 		    {
-;		        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
+		        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
 		    }
 
             mrbee_state |= MRBEE_TX_PKT_READY;
@@ -382,7 +437,7 @@ int main(void)
 #ifdef PKT_HANDLER
         if (decisecs >= pkt_period)
         {
-			if(!(mrbus_state & MRBUS_TX_PKT_READY))
+			if(!(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)))
 			{
     			mrbus_tx_buffer[MRBUS_PKT_SRC] = dev_addr;
     			mrbus_tx_buffer[MRBUS_PKT_DEST] = 0xFF;
@@ -407,7 +462,7 @@ int main(void)
     			mrbus_state |= MRBUS_TX_PKT_READY;
             }
             
-			if(!(mrbee_state & MRBEE_TX_PKT_READY))
+			if(!(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)))
 			{
     			mrbee_tx_buffer[MRBEE_PKT_SRC] = dev_addr;
     			mrbee_tx_buffer[MRBEE_PKT_DEST] = 0xFF;
