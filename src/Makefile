@@ -31,6 +31,7 @@ F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x91
 FUSE_E  = 0xFC
+AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE) -B32
 AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
 
 BASE_NAME = mrb-ap
@@ -51,6 +52,7 @@ help:
 	@echo "make flash ..... flash the firmware"
 	@echo "make fuse ...... flash the fuses"
 	@echo "make program ... flash fuses and firmware"
+	@echo "make defconfig.. flash default configuration eeprom values"
 	@echo "make read ...... read the fuses"
 	@echo "make clean ..... delete objects and hex file"
 	@echo "make release.... produce release tarball"
@@ -59,11 +61,14 @@ hex: $(BASE_NAME).hex
 
 program: fuse flash
 
+defconfig:
+	$(AVRDUDE) -U eeprom:w:0xfd,0xff,0x00,0x64:m
+
 # rule for programming fuse bits:
 fuse:
 	@[ "$(FUSE_H)" != "" -a "$(FUSE_L)" != "" -a "$(FUSE_E)" != "" ] || \
 		{ echo "*** Invalid Fuse values."; exit 1; }
-	$(AVRDUDE) -U hfuse:w:$(FUSE_H):m -U lfuse:w:$(FUSE_L):m -U efuse:w:$(FUSE_E):m
+	$(AVRDUDE_SLOW) -U hfuse:w:$(FUSE_H):m -U lfuse:w:$(FUSE_L):m -U efuse:w:$(FUSE_E):m
 
 read:
 	$(AVRDUDE) -v
