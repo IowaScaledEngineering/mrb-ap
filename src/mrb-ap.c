@@ -29,15 +29,6 @@ LICENSE:
 #include "mrbus.h"
 #include "mrbee.h"
 
-extern uint8_t mrbus_rx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbus_tx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbus_state;
-extern uint8_t mrbus_loneliness;
-
-extern uint8_t mrbee_rx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbee_tx_buffer[MRBUS_BUFFER_SIZE];
-extern uint8_t mrbee_state;
-
 extern uint8_t mrbee_rssi;
 uint8_t rssi_table[256];
 
