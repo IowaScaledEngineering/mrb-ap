@@ -46,7 +46,7 @@ uint16_t pkt_period = 10;
 //  MRBus packet comes in. Packet is handled and response stomps on relayed 
 //  MRBee packet. And vice versa..
 
-void pktHandler(uint8_t *rx_buffer, uint8_t *tx_buffer, uint8_t busy, uint8_t *state, uint8_t tx_mask)
+void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_t busy, volatile uint8_t *state, uint8_t tx_mask)
 {
 	//*************** PACKET HANDLER - PROCESS HERE ***************
 
