@@ -25,14 +25,14 @@
 #    
 #*************************************************************************
 
-DEVICE  = atmega1284p
-#DEVICE  = atmega164p
+DEVICE          = atmega1284p  # gcc in Ubuntu 12.04 doesn't know 1284
+DEVICE_AVRDUDE  = atmega1284
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x91
 FUSE_E  = 0xFC
-AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE) -B32
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1
+AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B32
+AVRDUDE = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B1
 
 BASE_NAME = mrb-ap
 DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=0 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
