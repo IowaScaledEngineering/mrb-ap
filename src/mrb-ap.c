@@ -29,9 +29,6 @@ LICENSE:
 #include "mrbus.h"
 #include "mrbee.h"
 
-#define HOLDOFF 20
-#define PKT_FILTER (!holdoff_decisecs_18 && (0x18 == mrbee_rx_buffer[MRBEE_PKT_SRC])) || (!holdoff_decisecs_A6 && (0xA6 == mrbee_rx_buffer[MRBEE_PKT_SRC]))
-
 extern uint8_t mrbee_rssi;
 uint8_t rssi_table[256];
 
@@ -198,8 +195,6 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 
 volatile uint8_t ticks;
 volatile uint16_t decisecs;
-volatile uint16_t holdoff_decisecs_18;
-volatile uint16_t holdoff_decisecs_A6;
 
 void initialize100HzTimer(void)
 {
@@ -208,8 +203,6 @@ void initialize100HzTimer(void)
 	OCR0A = 0xC2;
 	ticks = 0;
 	decisecs = 0;
-	holdoff_decisecs_18 = 0;
-	holdoff_decisecs_A6 = 0;
 	TCCR0A = _BV(WGM01);
 	TCCR0B = _BV(CS02) | _BV(CS00);
 	TIMSK0 |= _BV(OCIE0A);
@@ -221,14 +214,6 @@ ISR(TIMER0_COMPA_vect)
 	{
 		ticks = 0;
 		decisecs++;
-                if(holdoff_decisecs_18)
-                {
-        		holdoff_decisecs_18--;
-                }
-                if(holdoff_decisecs_A6)
-                {
-        		holdoff_decisecs_A6--;
-                }
 	}
 }
 
@@ -291,11 +276,21 @@ void pktRelay(void)
                 pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, (mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)), &mrbus_state, MRBUS_TX_PKT_READY );
             }
     	}
+		else if( !(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)) )
 #endif
 #ifndef PKT_HANDLER
+		if( !(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)) )
 #endif
+		{
+			if (mrbus_rx_buffer[MRBUS_PKT_LEN] > MRBEE_BUFFER_SIZE) mrbus_rx_buffer[MRBUS_PKT_LEN] = MRBEE_BUFFER_SIZE;
 
-//  Don't send MRBus to MRBee...
+		    for(i = 0; i < mrbus_rx_buffer[MRBUS_PKT_LEN]; i++)
+		    {
+		        mrbee_tx_buffer[i] = mrbus_rx_buffer[i];
+		    }
+
+            mrbee_state |= MRBEE_TX_PKT_READY;
+        }
 
         // Clear receive flag
         mrbus_state &= (~MRBUS_RX_PKT_READY);
@@ -329,10 +324,10 @@ void pktRelay(void)
                 pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, (mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)), &mrbee_state, MRBEE_TX_PKT_READY );
             }
     	}
-	    else if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) && (PKT_FILTER) )
+	    else if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) )
 #endif
 #ifndef PKT_HANDLER
-	    if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) && (PKT_FILTER) )
+	    if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) )
 #endif
         {
 			if (mrbee_rx_buffer[MRBEE_PKT_LEN] > MRBUS_BUFFER_SIZE) mrbee_rx_buffer[MRBEE_PKT_LEN] = MRBUS_BUFFER_SIZE;
@@ -343,14 +338,6 @@ void pktRelay(void)
 		    }
 
             mrbus_state |= MRBUS_TX_PKT_READY;
-            if(0x18 == mrbee_rx_buffer[MRBEE_PKT_SRC])
-            {
-                    holdoff_decisecs_18 = HOLDOFF;  // Hold off further transmit for 5 seconds to prevent infinite loopback with another AP
-            }
-            if(0xA6 == mrbee_rx_buffer[MRBEE_PKT_SRC])
-            {
-                    holdoff_decisecs_A6 = HOLDOFF;  // Hold off further transmit for 5 seconds to prevent infinite loopback with another AP
-            }
         }
 
         // Update RSSI table
