@@ -29,7 +29,6 @@ LICENSE:
 #include "mrbus.h"
 #include "mrbee.h"
 
-extern uint8_t mrbee_rssi;
 uint8_t rssi_table[256];
 
 uint32_t mrbusPktCount = 0;
@@ -46,14 +45,14 @@ uint16_t pkt_period = 10;
 //  MRBus packet comes in. Packet is handled and response stomps on relayed 
 //  MRBee packet. And vice versa..
 
-void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_t busy, volatile uint8_t *state, uint8_t tx_mask)
+void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, volatile uint8_t *state, uint8_t tx_mask, uint8_t busy_mask)
 {
 	//*************** PACKET HANDLER - PROCESS HERE ***************
 
 	if ('A' == rx_buffer[MRBUS_PKT_TYPE])
 	{
 		// PING packet
-        if(!busy)
+        if(!(*state & busy_mask))
         {
             tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
             tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -70,7 +69,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 			dev_addr = eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_ADDR);
 		if ( (MRBUS_EE_DEVICE_UPDATE_L == rx_buffer[6]) || (MRBUS_EE_DEVICE_UPDATE_H == rx_buffer[6]) )
 		    pkt_period = ((eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_H) << 8) & 0xFF00) | (eeprom_read_byte((uint8_t*)MRBUS_EE_DEVICE_UPDATE_L) & 0x00FF);
-        if(!busy)
+        if(!(*state & busy_mask))
         {
             tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
             tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -84,7 +83,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 	else if ('R' == rx_buffer[MRBUS_PKT_TYPE]) 
 	{
 		// EEPROM READ Packet
-		if(!busy)
+		if(!(*state & busy_mask))
 		{
             tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
             tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -98,7 +97,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 	else if ( ('V' == rx_buffer[MRBUS_PKT_TYPE]) || (powerOnReset) )
 	{
 		// Version
-		if(!busy)
+		if(!(*state & busy_mask))
 		{
             tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
             tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -130,7 +129,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 		if( ('R' == rx_buffer[6]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
 		{
 		    // RSSI Request
-            if(!busy)
+            if(!(*state & busy_mask))
             {
                 tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
                 tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -150,7 +149,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
             {
                 rssi_table[i] = 0xFF;  // Set all values to max -dBm
             }
-            if(!busy)
+            if(!(*state & busy_mask))
             {
                 tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
                 tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -166,7 +165,7 @@ void pktHandler(volatile uint8_t *rx_buffer, volatile uint8_t *tx_buffer, uint8_
 		    // Packet Counter Reset
             mrbusPktCount = 0;
             mrbeePktCount = 0;
-            if(!busy)
+            if(!(*state & busy_mask))
             {
                 tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
                 tx_buffer[MRBUS_PKT_SRC] = dev_addr;
@@ -273,7 +272,7 @@ void pktRelay(void)
         	}
         	if ((UINT16_HIGH_BYTE(crc) == mrbus_rx_buffer[MRBUS_PKT_CRC_H]) && (UINT16_LOW_BYTE(crc) == mrbus_rx_buffer[MRBUS_PKT_CRC_L]))
         	{
-                pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, (mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)), &mrbus_state, MRBUS_TX_PKT_READY );
+                pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, &mrbus_state, MRBUS_TX_PKT_READY, (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE) );
             }
     	}
 		else if( !(mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)) )
@@ -321,7 +320,7 @@ void pktRelay(void)
         	}
         	if ((UINT16_HIGH_BYTE(crc) == mrbee_rx_buffer[MRBEE_PKT_CRC_H]) && (UINT16_LOW_BYTE(crc) == mrbee_rx_buffer[MRBEE_PKT_CRC_L]))
         	{
-                pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, (mrbee_state & (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE)), &mrbee_state, MRBEE_TX_PKT_READY );
+                pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, &mrbee_state, MRBEE_TX_PKT_READY, (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE) );
             }
     	}
 	    else if( !(mrbus_state & (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE)) )
@@ -415,9 +414,9 @@ int main(void)
 #ifdef PKT_HANDLER
 	powerOnReset = 1;
 	mrbus_rx_buffer[MRBUS_PKT_SRC] = 0xFF;  // Fake the handler into sending a broadcast
-    pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, 0, &mrbus_state, MRBUS_TX_PKT_READY );
+    pktHandler(mrbus_rx_buffer, mrbus_tx_buffer, &mrbus_state, MRBUS_TX_PKT_READY, (MRBUS_TX_PKT_READY | MRBUS_TX_BUF_ACTIVE) );
 	mrbee_rx_buffer[MRBEE_PKT_SRC] = 0xFF;  // Fake the handler into sending a broadcast
-    pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, 0, &mrbee_state, MRBEE_TX_PKT_READY );
+    pktHandler(mrbee_rx_buffer, mrbee_tx_buffer, &mrbee_state, MRBEE_TX_PKT_READY, (MRBEE_TX_PKT_READY | MRBEE_TX_BUF_ACTIVE) );
 	powerOnReset = 0;
 #endif
 
@@ -447,9 +446,6 @@ int main(void)
     			
     			mrbus_tx_buffer[14] = (uint8_t)busVoltage;
 
-//    			mrbus_tx_buffer[7] = decInHex(busVoltage/10);
-//    			mrbus_tx_buffer[8] = decInHex(busVoltage-(10*(busVoltage/10)));
-//    			mrbus_tx_buffer[MRBUS_PKT_LEN] = 9;
     			mrbus_state |= MRBUS_TX_PKT_READY;
             }
             
