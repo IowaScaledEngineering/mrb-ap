@@ -35,7 +35,7 @@ AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B32
 AVRDUDE = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B1
 
 BASE_NAME = mrb-ap
-DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=0 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
+DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=1 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
 INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
 SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 OBJS = ${SRCS:.c=.o}
