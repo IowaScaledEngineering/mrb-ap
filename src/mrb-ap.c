@@ -32,15 +32,17 @@ LICENSE:
 #include "mrbus.h"
 #include "mrbee.h"
 
-#define QUEUE_DEPTH 64
+#define QUEUE_DEPTH 4
 
 
 uint8_t rssi_table[256];
 
 uint32_t mrbusPktCount = 0;
 uint32_t mrbeePktCount = 0;
-uint32_t mrbusPktDepth = 0;
-uint32_t mrbeePktDepth = 0;
+uint32_t mrbusPktDepthRX = 0;
+uint32_t mrbeePktDepthRX = 0;
+uint32_t mrbusPktDepthTX = 0;
+uint32_t mrbeePktDepthTX = 0;
 
 uint8_t bus_countdown;
 
@@ -294,8 +296,10 @@ uint8_t pktHandler(APQueue queue)
 						// Packet Counter Reset
 						mrbusPktCount = 0;
 						mrbeePktCount = 0;
-						mrbusPktDepth = 0;
-						mrbeePktDepth = 0;
+						mrbusPktDepthRX = 0;
+						mrbeePktDepthRX = 0;
+						mrbusPktDepthTX = 0;
+						mrbeePktDepthTX = 0;
 					    tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
 					    tx_buffer[MRBUS_PKT_SRC] = dev_addr;
 					    tx_buffer[MRBUS_PKT_LEN] = 8;
@@ -410,8 +414,10 @@ void init(void)
 	packetBufferInitialize(&mrbee_txQueue);
 	mrbusPktCount = 0;
 	mrbeePktCount = 0;
-	mrbusPktDepth = 0;
-	mrbeePktDepth = 0;
+	mrbusPktDepthRX = 0;
+	mrbeePktDepthRX = 0;
+	mrbusPktDepthTX = 0;
+	mrbeePktDepthTX = 0;
 
     for(i=0; i<256; i++)
     {
@@ -470,7 +476,7 @@ int main(void)
         {
 			tx_buffer[MRBUS_PKT_SRC] = dev_addr;
 			tx_buffer[MRBUS_PKT_DEST] = 0xFF;
-			tx_buffer[MRBUS_PKT_LEN] = 17;
+			tx_buffer[MRBUS_PKT_LEN] = 19;
 			tx_buffer[5] = 'S';
 
 			tx_buffer[6]  = (uint8_t)((mrbusPktCount >> 24) & 0xFF);
@@ -483,10 +489,12 @@ int main(void)
 			tx_buffer[12] = (uint8_t)((mrbeePktCount >>  8) & 0xFF);
 			tx_buffer[13] = (uint8_t)(mrbeePktCount & 0xFF);
 			
-			tx_buffer[14] = (uint8_t)mrbusPktDepth;
-			tx_buffer[15] = (uint8_t)mrbeePktDepth;
+			tx_buffer[14] = (uint8_t)mrbusPktDepthRX;
+			tx_buffer[15] = (uint8_t)mrbeePktDepthRX;
+			tx_buffer[16] = (uint8_t)mrbusPktDepthTX;
+			tx_buffer[17] = (uint8_t)mrbeePktDepthTX;
 
-			tx_buffer[16] = (uint8_t)busVoltage;
+			tx_buffer[18] = (uint8_t)busVoltage;
 
 			packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer));
 			packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer));
@@ -514,21 +522,24 @@ int main(void)
 		// Handle any queued packets
 		if((pktDepth = packetBufferDepth(&mrbus_rxQueue)))
 		{
-			if(pktDepth > mrbusPktDepth)
-				mrbusPktDepth = pktDepth;
+			if(pktDepth > mrbusPktDepthRX)
+				mrbusPktDepthRX = pktDepth;
 			pktHandler(AP_MRBUS_QUEUE);
 		}
 
 		if((pktDepth = packetBufferDepth(&mrbee_rxQueue)))
 		{
-			if(pktDepth > mrbeePktDepth)
-				mrbeePktDepth = pktDepth;
+			if(pktDepth > mrbeePktDepthRX)
+				mrbeePktDepthRX = pktDepth;
 			pktHandler(AP_MRBEE_QUEUE);
 		}
 
 		// If we have an MRBee packet to be transmitted, try to send it here
-		if(packetBufferDepth(&mrbee_txQueue))
+		if((pktDepth = packetBufferDepth(&mrbee_txQueue)))
 		{
+			if(pktDepth > mrbeePktDepthTX)
+				mrbeePktDepthTX = pktDepth;
+
 			if(!(mrbee_state & MRBEE_TX_BUF_ACTIVE))
 			{
 				packetBufferPop(&mrbee_txQueue, (uint8_t *)mrbee_tx_buffer, sizeof(mrbee_tx_buffer), 0);
@@ -538,8 +549,11 @@ int main(void)
 		}
 
 		// If we have an MRBus packet to be transmitted, try to send it here
-		if(packetBufferDepth(&mrbus_txQueue))
+		if((pktDepth = packetBufferDepth(&mrbus_txQueue)))
 		{
+			if(pktDepth > mrbusPktDepthTX)
+				mrbusPktDepthTX = pktDepth;
+
 			// But only if not waiting for bus_countdown or until a pending rx is complete
 			if((0 == bus_countdown) || (MRBUS_ACTIVITY_RX_COMPLETE == mrbus_activity))
 			{
