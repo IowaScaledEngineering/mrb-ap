@@ -32,7 +32,7 @@ LICENSE:
 #include "mrbus.h"
 #include "mrbee.h"
 
-#define QUEUE_DEPTH 4
+#define QUEUE_DEPTH 8
 
 
 uint8_t rssi_table[256];
@@ -83,7 +83,7 @@ uint8_t packetBufferDepth(PacketBuffer* r)
 {
 	if(r->full)
 		return(QUEUE_DEPTH);
-	return((r->headIdx - r->tailIdx ) % QUEUE_DEPTH);
+	return((uint8_t)(r->headIdx - r->tailIdx) % QUEUE_DEPTH);
 }
 
 uint8_t packetBufferPush(PacketBuffer* r, uint8_t* data, uint8_t dataLen)
