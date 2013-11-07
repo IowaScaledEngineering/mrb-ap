@@ -44,7 +44,7 @@ uint32_t mrbeePktDepthRX = 0;
 uint32_t mrbusPktDepthTX = 0;
 uint32_t mrbeePktDepthTX = 0;
 
-uint8_t bus_countdown;
+uint8_t mrbus_countdown;
 
 uint8_t tx_buffer[MRBUS_BUFFER_SIZE];
 uint8_t rx_buffer[MRBUS_BUFFER_SIZE];
@@ -388,9 +388,9 @@ ISR(TIMER0_COMPA_vect)
 		ticks = 0;
 		decisecs++;
 	}
-	if(bus_countdown)
+	if(mrbus_countdown)
 	{
-		bus_countdown--;
+		mrbus_countdown--;
 	}
 }
 
@@ -554,8 +554,8 @@ int main(void)
 			if(pktDepth > mrbusPktDepthTX)
 				mrbusPktDepthTX = pktDepth;
 
-			// But only if not waiting for bus_countdown or until a pending rx is complete
-			if((0 == bus_countdown) || (MRBUS_ACTIVITY_RX_COMPLETE == mrbus_activity))
+			// But only if not waiting for mrbus_countdown or until a pending rx is complete
+			if((0 == mrbus_countdown) || (MRBUS_ACTIVITY_RX_COMPLETE == mrbus_activity))
 			{
 				// And then only if no transmission is already in progress
 				if(!(mrbus_state & MRBUS_TX_BUF_ACTIVE))
@@ -571,7 +571,7 @@ int main(void)
 					{
 						// If we're here, we failed to start transmission due to somebody else transmitting
 						// We want to wait 20ms before we try a retransmit
-						bus_countdown = 20;
+						mrbus_countdown = 20;
 					}
 				}
 			}
