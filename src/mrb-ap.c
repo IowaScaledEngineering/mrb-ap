@@ -456,6 +456,9 @@ int main(void)
 	
 	init();
 
+	DDRB |= _BV(PB5) | _BV(PB6) | _BV(PB7);
+	PORTB &= ~(_BV(PB5) | _BV(PB6) | _BV(PB7));
+
 	mrbusInit();
 	mrbeeInit();
 
@@ -506,17 +509,17 @@ int main(void)
 		mrbeePoll();
 
 		// Handle any incoming packets
-		if(MRBUS_RX_PKT_READY == mrbus_state)
+		if(MRBUS_RX_PKT_READY & mrbus_state)
 		{
 			packetBufferPush(&mrbus_rxQueue, (uint8_t *)mrbus_rx_buffer, sizeof(mrbus_rx_buffer));
-	        mrbus_state &= (~MRBUS_RX_PKT_READY);
+			mrbus_state &= (~MRBUS_RX_PKT_READY);
 		}
 
-		if(MRBEE_RX_PKT_READY == mrbee_state)
+		if(MRBEE_RX_PKT_READY & mrbee_state)
 		{
-			packetBufferPush(&mrbee_rxQueue, (uint8_t *)mrbee_rx_buffer, sizeof(mrbus_rx_buffer));
-	        rssi_table[mrbee_rx_buffer[MRBEE_PKT_SRC]] = mrbee_rssi;  // Update RSSI table
-	        mrbee_state &= (~MRBEE_RX_PKT_READY);
+			packetBufferPush(&mrbee_rxQueue, (uint8_t *)mrbee_rx_buffer, sizeof(mrbee_rx_buffer));
+			rssi_table[mrbee_rx_buffer[MRBEE_PKT_SRC]] = mrbee_rssi;  // Update RSSI table
+			mrbee_state &= (~MRBEE_RX_PKT_READY);
 		}
 
 		// Handle any queued packets
@@ -560,7 +563,7 @@ int main(void)
 				// And then only if no transmission is already in progress
 				if(!(mrbus_state & MRBUS_TX_BUF_ACTIVE))
 				{
-					packetBufferPop(&mrbus_txQueue, (uint8_t *)mrbus_tx_buffer, sizeof(mrbus_tx_buffer), 1);  // Get the data but don't pop it yet in case we lose arbitration
+					packetBufferPop(&mrbus_txQueue, (uint8_t *)mrbus_tx_buffer, sizeof(mrbus_tx_buffer), 1);  // Get the data but don't remove it yet in case we lose arbitration
 					if (0 == mrbusPacketTransmit())
 					{
 						// Success!
