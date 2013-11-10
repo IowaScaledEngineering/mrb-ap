@@ -35,6 +35,11 @@ LICENSE:
 #define QUEUE_DEPTH 8
 
 
+/////////////////////////////////////////////////
+extern volatile uint8_t xbee_state;
+/////////////////////////////////////////////////
+
+
 uint8_t rssi_table[256];
 
 uint32_t mrbusPktCount = 0;
@@ -144,9 +149,9 @@ void createVersionPacket(uint8_t srcAddr)
 	tx_buffer[MRBUS_PKT_TYPE] = 'v';
 	tx_buffer[6]  = MRBUS_VERSION_WIRELESS;
 	// Software Revision
-	tx_buffer[7]  = (SWREV >> 16) & 0xFF;
-	tx_buffer[8]  = (SWREV >> 8) & 0xFF;
-	tx_buffer[9]  = SWREV & 0xFF;
+	tx_buffer[7]  = ((uint32_t)SWREV >> 16) & 0xFF;
+	tx_buffer[8]  = ((uint32_t)SWREV >> 8) & 0xFF;
+	tx_buffer[9]  = (uint32_t)SWREV & 0xFF;
 	tx_buffer[10]  = HWREV_MAJOR; // Hardware Major Revision
 	tx_buffer[11]  = HWREV_MINOR; // Hardware Minor Revision
 	tx_buffer[12] = 'A';
@@ -456,9 +461,6 @@ int main(void)
 	
 	init();
 
-	DDRB |= _BV(PB5) | _BV(PB6) | _BV(PB7);
-	PORTB &= ~(_BV(PB5) | _BV(PB6) | _BV(PB7));
-
 	mrbusInit();
 	mrbeeInit();
 
@@ -479,7 +481,7 @@ int main(void)
         {
 			tx_buffer[MRBUS_PKT_SRC] = dev_addr;
 			tx_buffer[MRBUS_PKT_DEST] = 0xFF;
-			tx_buffer[MRBUS_PKT_LEN] = 19;
+			tx_buffer[MRBUS_PKT_LEN] = 20;
 			tx_buffer[5] = 'S';
 
 			tx_buffer[6]  = (uint8_t)((mrbusPktCount >> 24) & 0xFF);
@@ -497,7 +499,10 @@ int main(void)
 			tx_buffer[16] = (uint8_t)mrbusPktDepthTX;
 			tx_buffer[17] = (uint8_t)mrbeePktDepthTX;
 
-			tx_buffer[18] = (uint8_t)busVoltage;
+			tx_buffer[18] = (uint8_t)mrbee_state;
+			tx_buffer[19] = (uint8_t)xbee_state;
+
+//			tx_buffer[18] = (uint8_t)busVoltage;
 
 			packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer));
 			packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer));
