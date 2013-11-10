@@ -34,20 +34,16 @@ LICENSE:
 
 #define QUEUE_DEPTH 8
 
-
-/////////////////////////////////////////////////
-extern volatile uint8_t xbee_state;
-/////////////////////////////////////////////////
-
-
 uint8_t rssi_table[256];
 
 uint32_t mrbusPktCount = 0;
 uint32_t mrbeePktCount = 0;
-uint32_t mrbusPktDepthRX = 0;
-uint32_t mrbeePktDepthRX = 0;
-uint32_t mrbusPktDepthTX = 0;
-uint32_t mrbeePktDepthTX = 0;
+uint32_t mrbusPktLoss  = 0;
+uint32_t mrbeePktLoss  = 0;
+uint8_t mrbusPktDepthRX = 0;
+uint8_t mrbeePktDepthRX = 0;
+uint8_t mrbusPktDepthTX = 0;
+uint8_t mrbeePktDepthTX = 0;
 
 uint8_t mrbus_countdown;
 
@@ -301,6 +297,8 @@ uint8_t pktHandler(APQueue queue)
 						// Packet Counter Reset
 						mrbusPktCount = 0;
 						mrbeePktCount = 0;
+						mrbusPktLoss  = 0;
+						mrbeePktLoss  = 0;
 						mrbusPktDepthRX = 0;
 						mrbeePktDepthRX = 0;
 						mrbusPktDepthTX = 0;
@@ -321,11 +319,11 @@ uint8_t pktHandler(APQueue queue)
 					{
 						case AP_MRBUS_QUEUE:
 							// MRBus --> MRBus
-							packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer));
+							if(!packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer)))
 							break;
 						case AP_MRBEE_QUEUE:
 							// MRBee --> MRBee
-							packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer));
+							if(!packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer)))
 							break;
 						default:
 							return(1);
@@ -419,6 +417,8 @@ void init(void)
 	packetBufferInitialize(&mrbee_txQueue);
 	mrbusPktCount = 0;
 	mrbeePktCount = 0;
+	mrbusPktLoss  = 0;
+	mrbeePktLoss  = 0;
 	mrbusPktDepthRX = 0;
 	mrbeePktDepthRX = 0;
 	mrbusPktDepthTX = 0;
@@ -499,10 +499,9 @@ int main(void)
 			tx_buffer[16] = (uint8_t)mrbusPktDepthTX;
 			tx_buffer[17] = (uint8_t)mrbeePktDepthTX;
 
-			tx_buffer[18] = (uint8_t)mrbee_state;
-			tx_buffer[19] = (uint8_t)xbee_state;
+			tx_buffer[18] = 0;
 
-//			tx_buffer[18] = (uint8_t)busVoltage;
+			tx_buffer[19] = (uint8_t)busVoltage;
 
 			packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer));
 			packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer));
@@ -516,13 +515,15 @@ int main(void)
 		// Handle any incoming packets
 		if(MRBUS_RX_PKT_READY & mrbus_state)
 		{
-			packetBufferPush(&mrbus_rxQueue, (uint8_t *)mrbus_rx_buffer, sizeof(mrbus_rx_buffer));
+			if(!packetBufferPush(&mrbus_rxQueue, (uint8_t *)mrbus_rx_buffer, sizeof(mrbus_rx_buffer)))
+				mrbusPktLoss++;
 			mrbus_state &= (~MRBUS_RX_PKT_READY);
 		}
 
 		if(MRBEE_RX_PKT_READY & mrbee_state)
 		{
-			packetBufferPush(&mrbee_rxQueue, (uint8_t *)mrbee_rx_buffer, sizeof(mrbee_rx_buffer));
+			if(!packetBufferPush(&mrbee_rxQueue, (uint8_t *)mrbee_rx_buffer, sizeof(mrbee_rx_buffer)))
+				mrbeePktLoss++;
 			rssi_table[mrbee_rx_buffer[MRBEE_PKT_SRC]] = mrbee_rssi;  // Update RSSI table
 			mrbee_state &= (~MRBEE_RX_PKT_READY);
 		}
