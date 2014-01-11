@@ -54,6 +54,7 @@ help:
 	@echo "make program ... flash fuses and firmware"
 	@echo "make defconfig.. flash default configuration eeprom values"
 	@echo "make read ...... read the fuses"
+	@echo "make size ...... memory usage"
 	@echo "make clean ..... delete objects and hex file"
 	@echo "make release.... produce release tarball"
 
@@ -72,6 +73,9 @@ fuse:
 
 read:
 	$(AVRDUDE) -v
+
+size:
+	avr-size -C --mcu=$(DEVICE) $(BASE_NAME).elf
 
 # rule for uploading firmware:
 flash: $(BASE_NAME).hex
