@@ -187,29 +187,29 @@ uint8_t pktHandler(APQueue queue)
 		default:
 			return(1);
 	}
-	
-#ifdef PKT_HANDLER
-	if(rx_buffer[MRBUS_PKT_DEST] == dev_addr)
+
+	// CRC16 Test - is the packet intact?
+	uint16_t crc = 0;
+	uint8_t i;
+
+	for(i=0; i<rx_buffer[MRBUS_PKT_LEN]; i++)
 	{
-		// Packet is intended for us
-		if(rx_buffer[MRBUS_PKT_SRC] != dev_addr)
+		if ((i != MRBUS_PKT_CRC_H) && (i != MRBUS_PKT_CRC_L)) 
+			crc = mrbusCRC16Update(crc, rx_buffer[i]);
+	}
+
+	if ((UINT16_HIGH_BYTE(crc) == rx_buffer[MRBUS_PKT_CRC_H]) && (UINT16_LOW_BYTE(crc) == rx_buffer[MRBUS_PKT_CRC_L]))
+	{
+		// Good packet.  Process.
+#ifdef PKT_HANDLER
+		if(rx_buffer[MRBUS_PKT_DEST] == dev_addr)
 		{
-			// Packet is not one we originated (to prevent rogue packets from creating a possible loop)
-			// CRC16 Test - is the packet intact?
-
-			uint16_t crc = 0;
-			uint8_t i;
-
-			for(i=0; i<rx_buffer[MRBUS_PKT_LEN]; i++)
+			// Packet is intended for us
+			if(rx_buffer[MRBUS_PKT_SRC] != dev_addr)
 			{
-				if ((i != MRBUS_PKT_CRC_H) && (i != MRBUS_PKT_CRC_L)) 
-					crc = mrbusCRC16Update(crc, rx_buffer[i]);
-			}
-			if ((UINT16_HIGH_BYTE(crc) == rx_buffer[MRBUS_PKT_CRC_H]) && (UINT16_LOW_BYTE(crc) == rx_buffer[MRBUS_PKT_CRC_L]))
-			{
-				// Good packet.  Process.
+				// Packet is not one we originated (to prevent rogue packets from creating a possible loop)
 				uint8_t pktReady = 0;
-				
+			
 				if ('A' == rx_buffer[MRBUS_PKT_TYPE])
 				{
 					// PING packet
@@ -267,13 +267,13 @@ uint8_t pktHandler(APQueue queue)
 					if( ('R' == rx_buffer[6]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
 					{
 						// RSSI Request
-					    tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-					    tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-					    tx_buffer[MRBUS_PKT_LEN] = 9;
-					    tx_buffer[MRBUS_PKT_TYPE] = 'c';
-					    tx_buffer[6] = 'r';
-					    tx_buffer[7] = rx_buffer[7];
-					    tx_buffer[8] = rssi_table[rx_buffer[7]];
+						tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+						tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+						tx_buffer[MRBUS_PKT_LEN] = 9;
+						tx_buffer[MRBUS_PKT_TYPE] = 'c';
+						tx_buffer[6] = 'r';
+						tx_buffer[7] = rx_buffer[7];
+						tx_buffer[8] = rssi_table[rx_buffer[7]];
 						pktReady = 1;
 					}
 					else if( ('X' == rx_buffer[6]) && ('R' == rx_buffer[7]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
@@ -282,14 +282,14 @@ uint8_t pktHandler(APQueue queue)
 						uint16_t i;
 						for(i=0; i<256; i++)
 						{
-						    rssi_table[i] = 0xFF;  // Set all values to max -dBm
+							rssi_table[i] = 0xFF;  // Set all values to max -dBm
 						}
-					    tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-					    tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-					    tx_buffer[MRBUS_PKT_LEN] = 8;
-					    tx_buffer[MRBUS_PKT_TYPE] = 'c';
-					    tx_buffer[6] = 'x';
-					    tx_buffer[7] = 'r';
+						tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+						tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+						tx_buffer[MRBUS_PKT_LEN] = 8;
+						tx_buffer[MRBUS_PKT_TYPE] = 'c';
+						tx_buffer[6] = 'x';
+						tx_buffer[7] = 'r';
 						pktReady = 1;
 					}
 					else if( ('X' == rx_buffer[6]) && ('P' == rx_buffer[7]) && (rx_buffer[MRBUS_PKT_LEN] > 7) )
@@ -303,12 +303,12 @@ uint8_t pktHandler(APQueue queue)
 						mrbeePktDepthRX = 0;
 						mrbusPktDepthTX = 0;
 						mrbeePktDepthTX = 0;
-					    tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
-					    tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-					    tx_buffer[MRBUS_PKT_LEN] = 8;
-					    tx_buffer[MRBUS_PKT_TYPE] = 'c';
-					    tx_buffer[6] = 'x';
-					    tx_buffer[7] = 'p';
+						tx_buffer[MRBUS_PKT_DEST] = rx_buffer[MRBUS_PKT_SRC];
+						tx_buffer[MRBUS_PKT_SRC] = dev_addr;
+						tx_buffer[MRBUS_PKT_LEN] = 8;
+						tx_buffer[MRBUS_PKT_TYPE] = 'c';
+						tx_buffer[6] = 'x';
+						tx_buffer[7] = 'p';
 						pktReady = 1;
 					}
 				}
@@ -329,27 +329,27 @@ uint8_t pktHandler(APQueue queue)
 							return(1);
 					}
 				}
-		    }
+			}
 		}
-	}
-	else
-	{
-#endif  // PKT_HANDLER
-		// Packet is not intended for us (or no packet handler defined), relay it to the other interface
-		switch(queue)
+		else
 		{
-			case AP_MRBUS_QUEUE:
-				// MRBus --> MRBee
-				packetBufferPush(&mrbee_txQueue, rx_buffer, sizeof(rx_buffer));
-				break;
-			case AP_MRBEE_QUEUE:
-				// MRBee --> MRBus
-				packetBufferPush(&mrbus_txQueue, rx_buffer, sizeof(rx_buffer));
-				break;
-			default:
-				return(1);
-		}
+#endif  // PKT_HANDLER
+			// Packet is not intended for us (or no packet handler defined), relay it to the other interface
+			switch(queue)
+			{
+				case AP_MRBUS_QUEUE:
+					// MRBus --> MRBee
+					packetBufferPush(&mrbee_txQueue, rx_buffer, sizeof(rx_buffer));
+					break;
+				case AP_MRBEE_QUEUE:
+					// MRBee --> MRBus
+					packetBufferPush(&mrbus_txQueue, rx_buffer, sizeof(rx_buffer));
+					break;
+				default:
+					return(1);
+			}
 #ifdef PKT_HANDLER
+		}
 	}
 #endif  // PKT_HANDLER
 	return(0);
