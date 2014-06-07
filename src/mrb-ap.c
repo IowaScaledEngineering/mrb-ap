@@ -28,11 +28,14 @@ LICENSE:
 #include <avr/wdt.h>
 #include <util/delay.h>
 
-
 #include "mrbus.h"
 #include "mrbee.h"
 
 #define QUEUE_DEPTH 8
+
+#define DEBUG (('S' != debug_type) && ('T' != debug_type) && ('C' != debug_type) && ('c' != debug_type) && ('v' != debug_type) && ('A' != debug_type) && ('a' != debug_type))
+uint8_t debug = 0;
+uint8_t debug_type = 0;
 
 uint8_t rssi_table[256];
 
@@ -96,8 +99,27 @@ uint8_t packetBufferPush(PacketBuffer* r, uint8_t* data, uint8_t dataLen)
 
 	dataLen = min(MRBUS_BUFFER_SIZE, dataLen);
 	pktPtr = (uint8_t*)r->pktData[r->headIdx].pkt;
+
+	debug_type = data[5];
+	if(DEBUG)
+	{
+		if(r == (PacketBuffer *)&mrbus_rxQueue)
+			debug |= 0x01;  // Push onto mrbus_rxQueue (before)
+		if(r == (PacketBuffer *)&mrbee_txQueue)
+			debug |= 0x10;  // Push onto mrbee_txQueue (before)
+	}
+
 	memcpy(pktPtr, data, dataLen);
 	memset(pktPtr+dataLen, 0, MRBUS_BUFFER_SIZE - dataLen);
+
+	debug_type = pktPtr[5];
+	if(DEBUG)
+	{
+		if(r == (PacketBuffer *)&mrbus_rxQueue)
+			debug |= 0x02;  // Push onto mrbus_rxQueue (after)
+		if(r == (PacketBuffer *)&mrbee_txQueue)
+			debug |= 0x20;  // Push onto mrbee_txQueue (after)
+	}
 
 	if( ++r->headIdx >= QUEUE_DEPTH )
 		r->headIdx = 0;
@@ -112,7 +134,26 @@ uint8_t packetBufferPop(PacketBuffer* r, uint8_t* data, uint8_t dataLen, uint8_t
 	if (0 == packetBufferDepth(r))
 		return(0);
 
+	debug_type = *(r->pktData[r->tailIdx].pkt + 5);
+	if(DEBUG)
+	{
+		if(r == (PacketBuffer *)&mrbus_rxQueue)
+			debug |= 0x04;  // Pop from mrbus_rxQueue (before)
+		if(r == (PacketBuffer *)&mrbee_txQueue)
+			debug |= 0x40;  // Pop from mrbee_txQueue (before)
+	}
+
 	memcpy(data, (uint8_t*)&(r->pktData[r->tailIdx].pkt), min(dataLen, r->pktData[r->tailIdx].pkt[MRBUS_PKT_LEN]));
+
+	debug_type = data[5];
+	if(DEBUG)
+	{
+		if(r == (PacketBuffer *)&mrbus_rxQueue)
+			debug |= 0x08;  // Pop from mrbus_rxQueue (after)
+		if(r == (PacketBuffer *)&mrbee_txQueue)
+			debug |= 0x80;  // Pop from mrbee_txQueue (after)
+	}
+
 	if (0 == snoop)
 	{
 		if( ++r->tailIdx >= QUEUE_DEPTH )
@@ -499,7 +540,9 @@ int main(void)
 			tx_buffer[16] = (uint8_t)mrbusPktDepthTX;
 			tx_buffer[17] = (uint8_t)mrbeePktDepthTX;
 
-			tx_buffer[18] = 0;
+			// Add packet loss stats?
+
+			tx_buffer[18] = debug;
 
 			tx_buffer[19] = (uint8_t)busVoltage;
 
