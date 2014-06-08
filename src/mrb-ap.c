@@ -50,9 +50,6 @@ uint8_t mrbeePktDepthTX = 0;
 
 uint8_t mrbus_countdown;
 
-uint8_t tx_buffer[MRBUS_BUFFER_SIZE];
-uint8_t rx_buffer[MRBUS_BUFFER_SIZE];
-
 typedef enum
 {
 	AP_MRBUS_QUEUE = 0x01,
@@ -143,7 +140,7 @@ uint8_t packetBufferPop(PacketBuffer* r, uint8_t* data, uint8_t dataLen, uint8_t
 			debug |= 0x40;  // Pop from mrbee_txQueue (before)
 	}
 
-	memcpy(data, (uint8_t*)&(r->pktData[r->tailIdx].pkt), min(dataLen, r->pktData[r->tailIdx].pkt[MRBUS_PKT_LEN]));
+	memcpy(data, (uint8_t *)(r->pktData[r->tailIdx].pkt), min(dataLen, r->pktData[r->tailIdx].pkt[MRBUS_PKT_LEN]));
 
 	debug_type = data[5];
 	if(DEBUG)
@@ -178,21 +175,21 @@ uint8_t packetBufferPopOnly(PacketBuffer* r)
 uint8_t dev_addr = 0;
 uint16_t pkt_period = 10;
 
-void createVersionPacket(uint8_t srcAddr)
+void createVersionPacket(uint8_t srcAddr, uint8_t *buf)
 {
-	tx_buffer[MRBUS_PKT_DEST] = srcAddr;
-	tx_buffer[MRBUS_PKT_SRC] = dev_addr;
-	tx_buffer[MRBUS_PKT_LEN] = 14;
-	tx_buffer[MRBUS_PKT_TYPE] = 'v';
-	tx_buffer[6]  = MRBUS_VERSION_WIRELESS;
+	buf[MRBUS_PKT_DEST] = srcAddr;
+	buf[MRBUS_PKT_SRC] = dev_addr;
+	buf[MRBUS_PKT_LEN] = 14;
+	buf[MRBUS_PKT_TYPE] = 'v';
+	buf[6]  = MRBUS_VERSION_WIRELESS;
 	// Software Revision
-	tx_buffer[7]  = ((uint32_t)SWREV >> 16) & 0xFF;
-	tx_buffer[8]  = ((uint32_t)SWREV >> 8) & 0xFF;
-	tx_buffer[9]  = (uint32_t)SWREV & 0xFF;
-	tx_buffer[10]  = HWREV_MAJOR; // Hardware Major Revision
-	tx_buffer[11]  = HWREV_MINOR; // Hardware Minor Revision
-	tx_buffer[12] = 'A';
-	tx_buffer[13] = 'P';
+	buf[7]  = ((uint32_t)SWREV >> 16) & 0xFF;
+	buf[8]  = ((uint32_t)SWREV >> 8) & 0xFF;
+	buf[9]  = (uint32_t)SWREV & 0xFF;
+	buf[10]  = HWREV_MAJOR; // Hardware Major Revision
+	buf[11]  = HWREV_MINOR; // Hardware Minor Revision
+	buf[12] = 'A';
+	buf[13] = 'P';
 }
 
 volatile uint16_t busVoltageAccum=0;
@@ -217,6 +214,9 @@ ISR(ADC_vect)
 
 uint8_t pktHandler(APQueue queue)
 {
+	uint8_t tx_buffer[MRBUS_BUFFER_SIZE];
+	uint8_t rx_buffer[MRBUS_BUFFER_SIZE];
+
 	switch(queue)
 	{
 		case AP_MRBUS_QUEUE:
@@ -290,7 +290,7 @@ uint8_t pktHandler(APQueue queue)
 				else if ('V' == rx_buffer[MRBUS_PKT_TYPE])
 				{
 					// Version
-					createVersionPacket(rx_buffer[MRBUS_PKT_SRC]);
+					createVersionPacket(rx_buffer[MRBUS_PKT_SRC], tx_buffer);
 					pktReady = 1;
 				}
 				else if ('X' == rx_buffer[MRBUS_PKT_TYPE]) 
@@ -508,7 +508,8 @@ int main(void)
 	initialize1kHzTimer();
 	
 #ifdef PKT_HANDLER
-	createVersionPacket(0xFF);
+	uint8_t tx_buffer[MRBUS_BUFFER_SIZE];
+	createVersionPacket(0xFF, tx_buffer);
 	packetBufferPush(&mrbus_txQueue, tx_buffer, sizeof(tx_buffer));
 	packetBufferPush(&mrbee_txQueue, tx_buffer, sizeof(tx_buffer));
 #endif  // PKT_HANDLER

@@ -25,17 +25,16 @@
 #    
 #*************************************************************************
 
-DEVICE          = atmega1284p  # gcc in Ubuntu 12.04 doesn't know 1284
-DEVICE_AVRDUDE  = atmega1284
+DEVICE  = atmega1284p
 F_CPU   = 20000000	# Hz
 FUSE_L  = 0xD7
 FUSE_H  = 0x91
 FUSE_E  = 0xFC
-AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B32
-AVRDUDE = avrdude -c usbtiny -p $(DEVICE_AVRDUDE) -B1
+AVRDUDE_SLOW = avrdude -c usbtiny -p $(DEVICE) -B32
+AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1 -F
 
 BASE_NAME = mrb-ap
-DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=250 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
+DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=0xFFFFF0 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
 INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
 SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
 OBJS = ${SRCS:.c=.o}
@@ -59,6 +58,8 @@ help:
 	@echo "make release.... produce release tarball"
 
 hex: $(BASE_NAME).hex
+
+asm: $(BASE_NAME).s
 
 program: fuse flash
 
