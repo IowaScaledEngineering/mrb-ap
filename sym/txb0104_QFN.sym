@@ -5,7 +5,7 @@ refdes=U?
 T 1100 2400 5 10 1 1 0 4 1
 device=TXB0104
 T 300 7000 5 10 0 0 0 0 1
-footprint=TI_RGY14
+footprint=TXB0104
 T 300 7200 5 10 0 0 0 0 1
 author=Michael Petersen
 T 400 7800 5 10 0 0 0 0 1
