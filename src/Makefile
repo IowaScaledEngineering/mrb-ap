@@ -35,10 +35,10 @@ AVRDUDE = avrdude -c usbtiny -p $(DEVICE) -B1 -F
 
 BASE_NAME = mrb-ap
 DEFINES = -DMRBUS_DISABLE_LOOPBACK -DMRBEE_BAUD=115200 -DPKT_HANDLER -DXBEE_UART_RX_BUFFER_DEPTH=16 -DSWREV=0xFFFFF0 -DHWREV_MAJOR=2 -DHWREV_MINOR=0
-INCS = ../../mrbus/src/mrbus.h ../../mrbus/src/mrbus-avr.h ../../mrbee/src/mrbee.h ../../mrbee/src/xbee.h
-SRCS = $(BASE_NAME).c ../../mrbus/src/mrbus-avr.c ../../mrbus/src/mrbus-crc.c ../../mrbee/src/mrbee.c ../../mrbee/src/xbee.c
+INCS = ./mrbus-legacy/mrbus.h ./mrbus-legacy/mrbus-avr.h ./mrbee-legacy/mrbee.h ./mrbee-legacy/xbee.h
+SRCS = $(BASE_NAME).c ./mrbus-legacy/mrbus-avr.c ./mrbus-legacy/mrbus-crc.c ./mrbee-legacy/mrbee.c ./mrbee-legacy/xbee.c
 OBJS = ${SRCS:.c=.o}
-INCLUDES = -I. -I../../mrbus/src -I../../mrbee/src
+INCLUDES = -I. -I./mrbus-legacy/ -I./mrbee-legacy/
 CFLAGS  = $(INCLUDES) -Wall -Os -std=gnu99 -ffunction-sections -Wl,-gc-sections
 
 COMPILE = avr-gcc $(DEFINES) -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
